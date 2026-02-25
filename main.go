@@ -303,21 +303,6 @@ func init() {
 	}
 }
 
-func getDiskUsage(path string) (total, free, used uint64, usagePct float64) {
-    fs := syscall.Statfs_t{}
-    err := syscall.Statfs(path, &fs)
-    if err != nil {
-        return
-    }
-    total = fs.Blocks * uint64(fs.Bsize)
-    free = fs.Bfree * uint64(fs.Bsize)
-    used = total - free
-    if total > 0 {
-        usagePct = float64(used) / float64(total) * 100
-    }
-    return
-}
-
 func main() {
 	for update := range Updates {
 		// ignore edited messages
@@ -437,20 +422,8 @@ func main() {
 			// might be a file received
 			go receiveTorrent(update)
 
-        case "disk", "/disk", "ds", "/ds":
-            total, free, used, pct := getDiskUsage("/mnt/storage")
-
-            const GB = 1024 * 1024 * 1024
-
-            msgText := fmt.Sprintf("📊 *Статус диска OMV:*\n"+
-                "Всего: %d GB\n"+
-                "Использовано: %d GB (%.1f%%)\n"+
-                "Свободно: %d GB",
-                total/GB, used/GB, pct, free/GB)
-
-            msg := tgbotapi.NewMessage(message.Chat.ID, msgText)
-            msg.ParseMode = "Markdown"
-            bot.Send(msg)
+        case "disk", "/disk":
+            go checkDisk(update)
 
 
 		default:
@@ -1562,6 +1535,22 @@ func deldata(ud tgbotapi.Update, tokens []string) {
 
 		send("Deleted with data: "+name, ud.Message.Chat.ID, false)
 	}
+}
+
+func checkDisk(ud tgbotapi.Update) {
+    // Путь /mnt/storage мы пробросим в docker-compose
+    total, free, used, pct := getDiskUsage("/mnt/storage")
+
+    const GB = 1024 * 1024 * 1024
+
+    msgText := fmt.Sprintf("📊 *Статус диска OMV:*\n"+
+        "Всего: %d GB\n"+
+        "Использовано: %d GB (%.1f%%)\n"+
+        "Свободно: %d GB",
+        total/GB, used/GB, pct, free/GB)
+
+    // Используем авторскую функцию send(text, chatID, isMarkdown)
+    send(msgText, ud.Message.Chat.ID, true)
 }
 
 // getVersion sends transmission version + transmission-telegram version
