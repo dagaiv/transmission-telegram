@@ -1553,6 +1553,21 @@ func checkDisk(ud tgbotapi.Update) {
     send(msgText, ud.Message.Chat.ID, true)
 }
 
+func getDiskUsage(path string) (total, free, used uint64, usagePct float64) {
+    fs := syscall.Statfs_t{}
+    err := syscall.Statfs(path, &fs)
+    if err != nil {
+        return
+    }
+    total = uint64(fs.Blocks) * uint64(fs.Bsize)
+    free = uint64(fs.Bfree) * uint64(fs.Bsize)
+    used = total - free
+    if total > 0 {
+        usagePct = float64(used) / float64(total) * 100
+    }
+    return
+}
+
 // getVersion sends transmission version + transmission-telegram version
 func getVersion(ud tgbotapi.Update) {
 	send(fmt.Sprintf("Transmission *%s*\nTransmission-telegram *%s*", Client.Version(), VERSION), ud.Message.Chat.ID, true)
