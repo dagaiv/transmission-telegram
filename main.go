@@ -108,6 +108,9 @@ const (
 	*version* or *ver*
 	Shows version numbers.
 
+    *disk* or *ds*
+    Shows your storage information (total/used/available capacity)
+
 	- Prefix commands with '/' if you want to talk to your bot in a group. 
 	- report any issues [here](https://github.com/pyed/transmission-telegram)
 	`
@@ -422,7 +425,7 @@ func main() {
 			// might be a file received
 			go receiveTorrent(update)
 
-        case "disk", "/disk":
+        case "disk", "/disk", "ds", "/ds":
             go checkDisk(update)
 
 
@@ -1537,22 +1540,23 @@ func deldata(ud tgbotapi.Update, tokens []string) {
 	}
 }
 
+// checkDisk send storage total/used/free capacity values
 func checkDisk(ud tgbotapi.Update) {
-    // Путь /mnt/storage мы пробросим в docker-compose
+    // Path /mnt/storage -> docker-compose.yaml
     total, free, used, pct := getDiskUsage("/mnt/storage")
 
     const GB = 1024 * 1024 * 1024
 
-    msgText := fmt.Sprintf("📊 *Статус диска OMV:*\n"+
-        "Всего: %d GB\n"+
-        "Использовано: %d GB (%.1f%%)\n"+
-        "Свободно: %d GB",
+    msgText := fmt.Sprintf("📊 *Storage status:*\n"+
+        "Total: %d GB\n"+
+        "Used: %d GB (%.1f%%)\n"+
+        "Free: %d GB",
         total/GB, used/GB, pct, free/GB)
 
-    // Используем авторскую функцию send(text, chatID, isMarkdown)
     send(msgText, ud.Message.Chat.ID, true)
 }
 
+// getDiskUsage get storage total/used/free capacity values
 func getDiskUsage(path string) (total, free, used uint64, usagePct float64) {
     fs := syscall.Statfs_t{}
     err := syscall.Statfs(path, &fs)
